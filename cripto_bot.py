@@ -1,16 +1,17 @@
 import telebot
 from telebot import types
-from config import TOKEN, CHAT_ID, GROUP_ID, DBFILE, message as mes
+from config import TOKEN, CHAT_ID, GROUP_ID, DBFILE, message as mes, Ua
 import markups as nav
 from db import DB_manager
-from pyTelegramBotCAPTCHA import CaptchaManager
+from pyTelegramBotCAPTCHA import CaptchaManager, CaptchaOptions
 import re
 from mail_verificator import Verificator
+import logging
 
 
 bot = telebot.TeleBot(TOKEN)
+captcha_manager = CaptchaManager(bot.get_me().id)
 db = DB_manager("data/"+DBFILE)
-captcha_manager = CaptchaManager(bot.get_me().id, default_timeout=90)
 regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 mail = Verificator()
 
@@ -53,12 +54,17 @@ def mess(message):
 		if state == 'start':
 			if message.text == '🇷🇺 Русский':
 				db.set_user_language(message.from_user.id, "ru")
+			elif message.text == '🇺🇦 Українська':
+				db.set_user_language(message.from_user.id, "ua")
 			else:
 				db.set_user_language(message.from_user.id, "en")
 			db.set_user_working_state(message.from_user.id, "language")
 			language = db.get_user_language(message.from_user.id)
-			captcha_manager.default_options.language = language
-			captcha_manager.send_random_captcha(bot, message.chat, message.from_user)
+			if language == 'ua':
+				captcha_manager.default_options.custom_language = Ua
+			else:
+				captcha_manager.default_options.language = language
+			captcha_manager.send_random_captcha(bot, message.chat, message.from_user, only_digits=True)
 		elif state == 'subscribe':
 			if re.fullmatch(regex, message.text):
 				if not db.exists_verificate_email(message.text):
@@ -87,7 +93,8 @@ def mess(message):
 				send_message = mes[language][10]
 				bot.send_message(message.chat.id, send_message, parse_mode='html')
 		elif state == 'verificate':
-			if message.text == "Change Language 🇷🇺/🇬🇧" or message.text == 'Сменить Язик 🇷🇺/🇬🇧':
+			if message.text == "Change Language 🇷🇺/🇬🇧/🇺🇦" or message.text == 'Сменить Язык 🇷🇺/🇬🇧/🇺🇦'\
+					or message.text == 'Змінити мову 🇷🇺/🇬🇧/🇺🇦':
 				send_message = "Select language"
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.start_keyboard)
 			elif message.text == "🇷🇺 Русский":
@@ -102,11 +109,43 @@ def mess(message):
 				bot.delete_message(message.chat.id, message.id)
 				send_message = mes['en'][12]
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.main_keyboard['en'])
-			elif message.text == "Мои награды💰" or message.text == "My rewards💰":
+			elif message.text == '🇺🇦 Українська':
+				db.set_user_language(message.from_user.id, "ua")
+				bot.delete_message(message.chat.id, message.id - 1)
 				bot.delete_message(message.chat.id, message.id)
-				send_message = mes[language][11]
+				send_message = mes['ua'][12]
+				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.main_keyboard['ua'])
+			elif message.text == "Мои награды💰":
+				bot.delete_message(message.chat.id, message.id)
+				count = db.get_count_referals(message.from_user.id)
+				prize = int(count / 12)
+				east = 5 + 1 * count + prize * 10
+				usdt = 0.25 + 0.1 * count
+				send_message = f"Ваши награды:\n{east} EAST\n{usdt:.2f} USDT"
+				if prize >= 1:
+					send_message = send_message + f"\n{prize} EAST MYSTERY BOX №1\n{prize*1000} SHIB\n{prize*0.5:.1f} DOGE"
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
-			elif message.text == "⮨Back" or message.text == "⮨Назад":
+			elif message.text == "My rewards💰":
+				bot.delete_message(message.chat.id, message.id)
+				count = db.get_count_referals(message.from_user.id)
+				prize = int(count / 12)
+				east = 5 + 1 * count + prize * 10
+				usdt = 0.25 + 0.1 * count
+				send_message = f"Yours rewards:\n{east} EAST\n{usdt:.2f} USDT"
+				if prize >= 1:
+					send_message = send_message + f"\n{prize} EAST MYSTERY BOX №1\n{prize*1000} SHIB\n{prize*0.5} DOGE"
+				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
+			elif message.text == "Мої нагороди💰":
+				bot.delete_message(message.chat.id, message.id)
+				count = db.get_count_referals(message.from_user.id)
+				prize = int(count / 12)
+				east = 5 + 1 * count + prize * 10
+				usdt = 0.25 + 0.1 * count
+				send_message = f"Ваші нагороди:\n{east} EAST\n{usdt:.2f} USDT"
+				if prize >= 1:
+					send_message = send_message + f"\n{prize} EAST MYSTERY BOX №1\n{prize*1000} SHIB\n{prize*0.5} DOGE"
+				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
+			elif message.text == "👈Back" or message.text == "👈Назад" or message.text == "👈Повернутись":
 				bot.delete_message(message.chat.id, message.id)
 				send_message = mes[language][12]
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.main_keyboard[language])
@@ -116,7 +155,7 @@ def mess(message):
 				link = db.get_user_referal_link(message.from_user.id)
 				send_message = f'<b>Мои рефералы 🙋‍♂</b>: {count}\n<b>Моя реферальная ссылка</b>: {link}\n'
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
-				send_message = '[Награды](https://telegra.ph/Referalnaya-programma-11-07)'
+				send_message = '[Награды](https://telegra.ph/Referalnaya-programma-11-12)'
 				bot.send_message(message.chat.id, send_message, parse_mode='MarkdownV2', reply_markup=nav.back_keyboard[language])
 			elif message.text == "Referral program 🙋‍♂":
 				bot.delete_message(message.chat.id, message.id)
@@ -124,8 +163,20 @@ def mess(message):
 				link = db.get_user_referal_link(message.from_user.id)
 				send_message = '<b>My referrals 🙋‍♂</b>: ' + str(count) + '\n<b>My referral link</b>: ' + link
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
-				send_message = '[Awards](https://telegra.ph/Referral-program-11-07)'
+				send_message = '[Rewards](https://telegra.ph/Referral-program-11-12)'
 				bot.send_message(message.chat.id, send_message, parse_mode='MarkdownV2', reply_markup=nav.back_keyboard[language])
+			elif message.text == "Реферальна програма 🙋‍♂":
+				bot.delete_message(message.chat.id, message.id)
+				count = db.get_count_referals(message.from_user.id)
+				link = db.get_user_referal_link(message.from_user.id)
+				send_message = '<b>Мої реферали 🙋‍♂</b>: ' + str(count) + '\n<b>Моє реферальне посилання</b>: ' + link
+				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
+				send_message = '[Нагороди](https://telegra.ph/Referral-program-11-12)'
+				bot.send_message(message.chat.id, send_message, parse_mode='MarkdownV2', reply_markup=nav.back_keyboard[language])
+			elif message.text == "Information 📚" or message.text == "Информация 📚" or message.text == "Інформація 📚":
+				bot.delete_message(message.chat.id, message.id)
+				send_message = mes[language][13]
+				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
 
 
 # Handler for correct solved CAPTCHAs

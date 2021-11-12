@@ -80,7 +80,7 @@ class DB_manager:
 
     def get_count_referals(self, user_id):
         with self.connection:
-            result = self.cursor.execute("SELECT * FROM `users` WHERE `Referal` = ?", (user_id,)).fetchall()
+            result = self.cursor.execute("SELECT * FROM `users` WHERE `Referal` = ? AND `Working_State` = ?", (user_id, "verificate",)).fetchall()
             return len(result)
 
     def set_user_referal(self, user_id, referal):
