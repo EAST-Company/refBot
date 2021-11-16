@@ -171,7 +171,7 @@ def mess(message):
 				link = db.get_user_referal_link(message.from_user.id)
 				send_message = '<b>Мої реферали 🙋‍♂</b>: ' + str(count) + '\n<b>Моє реферальне посилання</b>: ' + link
 				bot.send_message(message.chat.id, send_message, parse_mode='html', reply_markup=nav.back_keyboard[language])
-				send_message = '[Нагороди](https://telegra.ph/Referalna-programa-11-14)'
+				send_message = '[Нагороди](https://telegra.ph/Referral-program-11-12)'
 				bot.send_message(message.chat.id, send_message, parse_mode='MarkdownV2', reply_markup=nav.back_keyboard[language])
 			elif message.text == "Information 📚" or message.text == "Информация 📚" or message.text == "Інформація 📚":
 				bot.delete_message(message.chat.id, message.id)
