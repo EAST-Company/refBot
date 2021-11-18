@@ -13,6 +13,7 @@ bot = telebot.TeleBot(TOKEN)
 captcha_manager = CaptchaManager(bot.get_me().id)
 db = DB_manager("data/"+DBFILE)
 regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+regexGmail = r'\b[A-Za-z0-9._%+-]+@gmail+\.[A-Z|a-z]{2,}\b'
 mail = Verificator()
 
 
@@ -67,9 +68,14 @@ def mess(message):
 			captcha_manager.send_random_captcha(bot, message.chat, message.from_user, only_digits=True)
 		elif state == 'subscribe':
 			if re.fullmatch(regex, message.text):
-				if not db.exists_verificate_email(message.text):
-					db.set_user_email(message.from_user.id, message.text)
-					if mail.send_code(user_email=message.text):
+				email = message.text
+				if re.fullmatch(regexGmail, message.text):
+					text = message.text.split('@')
+					firstPart = text[0].replace('.', '')
+					email = firstPart + "@" + text[1]
+				if not db.exists_verificate_email(email):
+					db.set_user_email(message.from_user.id, email)
+					if mail.send_code(user_email=email):
 						db.set_user_working_state(message.from_user.id, 'email')
 						send_message = mes[language][5]
 						bot.send_message(message.chat.id, send_message, parse_mode='html')
